@@ -5,6 +5,7 @@ import {
   buildLinks, RouteAnalysis
 } from '../models/topology.models';
 import { environment } from '../../../environments/environment';
+import { LogService } from './log.service';
 
 export interface MetricsSeries {
   timestamp: Date;
@@ -19,6 +20,7 @@ export interface MetricsSeries {
 }
 
 const MAX_METRICS_HISTORY = 300; // ~25 min at 5 s intervals
+const COMPONENT = 'TopologyService';
 
 @Injectable({ providedIn: 'root' })
 export class TopologyService implements OnDestroy {
@@ -42,7 +44,8 @@ export class TopologyService implements OnDestroy {
   private reconnectTimer: ReturnType<typeof setTimeout> | null = null;
   private reconnectDelay = 2000;
 
-  constructor(private http: HttpClient) {
+  constructor(private http: HttpClient, private log: LogService) {
+    this.log.info(COMPONENT, 'initializing', { wsUrl: environment.wsUrl });
     this.connect();
   }
 
@@ -52,34 +55,40 @@ export class TopologyService implements OnDestroy {
     if (this.ws) {
       this.ws.close();
     }
+    this.log.debug(COMPONENT, 'connecting', { url: environment.wsUrl });
     this.ws = new WebSocket(environment.wsUrl);
 
     this.ws.onopen = () => {
       this.connected.set(true);
       this.reconnectDelay = 2000;
+      this.log.info(COMPONENT, 'websocket connected', { url: environment.wsUrl });
     };
 
     this.ws.onmessage = (event) => {
       try {
         const msg: FrontendMessage = JSON.parse(event.data);
+        this.log.debug(COMPONENT, 'message received', { type: msg.type });
         this.handleMessage(msg);
-      } catch {
-        // ignore malformed frames
+      } catch (err) {
+        this.log.warn(COMPONENT, 'failed to parse message', { err: String(err) });
       }
     };
 
-    this.ws.onclose = () => {
+    this.ws.onclose = (event) => {
       this.connected.set(false);
+      this.log.warn(COMPONENT, 'websocket closed', { code: event.code, reason: event.reason || 'none' });
       this.scheduleReconnect();
     };
 
     this.ws.onerror = () => {
+      this.log.error(COMPONENT, 'websocket error');
       this.ws?.close();
     };
   }
 
   private scheduleReconnect(): void {
     if (this.reconnectTimer) return;
+    this.log.info(COMPONENT, 'scheduling reconnect', { delayMs: this.reconnectDelay });
     this.reconnectTimer = setTimeout(() => {
       this.reconnectTimer = null;
       this.connect();
@@ -97,6 +106,7 @@ export class TopologyService implements OnDestroy {
         map.set(d.id, d);
       }
       this.devices.set(map);
+      this.log.info(COMPONENT, 'topology snapshot applied', { deviceCount: map.size });
 
     } else if (msg.type === 'device_update') {
       this.devices.update(m => {
@@ -104,6 +114,7 @@ export class TopologyService implements OnDestroy {
         next.set(msg.device_update.id, msg.device_update);
         return next;
       });
+      this.log.debug(COMPONENT, 'device updated', { id: msg.device_update.id, hostname: msg.device_update.hostname });
 
     } else if (msg.type === 'device_offline') {
       this.devices.update(m => {
@@ -112,6 +123,7 @@ export class TopologyService implements OnDestroy {
         if (d) next.set(d.id, { ...d, status: 'offline' });
         return next;
       });
+      this.log.warn(COMPONENT, 'device went offline', { deviceId: msg.device_offline.device_id, hostname: msg.device_offline.hostname });
 
     } else if (msg.type === 'metrics') {
       this.pushMetrics(msg.metrics);
@@ -148,12 +160,14 @@ export class TopologyService implements OnDestroy {
   // ── REST helpers ──────────────────────────────────────────────────────────
 
   analyzeRoute(srcId: string, dstId: string) {
+    this.log.debug(COMPONENT, 'route analysis requested', { src: srcId, dst: dstId });
     return this.http.get<RouteAnalysis>(
       `${environment.apiUrl}/api/route?src=${srcId}&dst=${dstId}`
     );
   }
 
   ngOnDestroy(): void {
+    this.log.info(COMPONENT, 'destroying service');
     if (this.reconnectTimer) clearTimeout(this.reconnectTimer);
     this.ws?.close();
   }
