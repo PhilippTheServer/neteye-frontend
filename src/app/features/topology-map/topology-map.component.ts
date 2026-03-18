@@ -1,6 +1,12 @@
 import {
-  Component, OnInit, OnDestroy, ElementRef, ViewChild,
-  AfterViewInit, Input, Output, EventEmitter, effect, signal
+  Component,
+  OnDestroy,
+  ElementRef,
+  ViewChild,
+  AfterViewInit,
+  Output,
+  EventEmitter,
+  effect,
 } from '@angular/core';
 import * as d3 from 'd3';
 import { GraphNode, GraphLink, DeviceInfo, RouteHop } from '../../core/models/topology.models';
@@ -8,9 +14,18 @@ import { TopologyService } from '../../core/services/topology.service';
 
 // Palette: one colour per subnet CIDR (assigned on first seen, cycled)
 const NET_COLORS = [
-  '#00d4aa', '#7c6bff', '#ff6b9d', '#ffaa00',
-  '#00b4d8', '#ff6348', '#a8e6cf', '#dcedc1',
-  '#ffd3b6', '#ffaaa5', '#c7ceea', '#b5ead7',
+  '#00d4aa',
+  '#7c6bff',
+  '#ff6b9d',
+  '#ffaa00',
+  '#00b4d8',
+  '#ff6348',
+  '#a8e6cf',
+  '#dcedc1',
+  '#ffd3b6',
+  '#ffaaa5',
+  '#c7ceea',
+  '#b5ead7',
 ];
 
 @Component({
@@ -30,7 +45,7 @@ const NET_COLORS = [
   styleUrls: ['./topology-map.component.scss'],
 })
 export class TopologyMapComponent implements AfterViewInit, OnDestroy {
-  @ViewChild('svg')  svgRef!: ElementRef<SVGSVGElement>;
+  @ViewChild('svg') svgRef!: ElementRef<SVGSVGElement>;
   @ViewChild('mapWrap') wrapRef!: ElementRef<HTMLDivElement>;
 
   @Output() deviceSelected = new EventEmitter<DeviceInfo | null>();
@@ -77,17 +92,20 @@ export class TopologyMapComponent implements AfterViewInit, OnDestroy {
 
   private initSvg(): void {
     const wrap = this.wrapRef.nativeElement;
-    const W = wrap.clientWidth, H = wrap.clientHeight;
+    const W = wrap.clientWidth,
+      H = wrap.clientHeight;
 
-    this.svg = d3.select(this.svgRef.nativeElement)
-      .attr('width', W).attr('height', H);
+    this.svg = d3.select(this.svgRef.nativeElement).attr('width', W).attr('height', H);
 
-    this.zoom = d3.zoom<SVGSVGElement, unknown>()
+    this.zoom = d3
+      .zoom<SVGSVGElement, unknown>()
       .scaleExtent([0.05, 5])
       .on('zoom', (e) => this.g.attr('transform', e.transform));
 
-    this.svg.call(this.zoom)
-      .on('click', () => { this.deviceSelected.emit(null); this.clearHighlight(); });
+    this.svg.call(this.zoom).on('click', () => {
+      this.deviceSelected.emit(null);
+      this.clearHighlight();
+    });
 
     this.g = this.svg.append('g');
 
@@ -96,9 +114,16 @@ export class TopologyMapComponent implements AfterViewInit, OnDestroy {
     this.g.append('g').attr('class', 'link-labels');
     this.g.append('g').attr('class', 'nodes');
 
-    this.sim = d3.forceSimulation<GraphNode, GraphLink>()
-      .force('link', d3.forceLink<GraphNode, GraphLink>()
-        .id(d => d.id).distance(160).strength(0.25))
+    this.sim = d3
+      .forceSimulation<GraphNode, GraphLink>()
+      .force(
+        'link',
+        d3
+          .forceLink<GraphNode, GraphLink>()
+          .id((d) => d.id)
+          .distance(160)
+          .strength(0.25),
+      )
       .force('charge', d3.forceManyBody().strength(-600))
       .force('center', d3.forceCenter(W / 2, H / 2))
       .force('collision', d3.forceCollide(55))
@@ -121,7 +146,8 @@ export class TopologyMapComponent implements AfterViewInit, OnDestroy {
     }
 
     // ── Links ─────────────────────────────────────────────────────────────
-    this.linkSel = this.g.select<SVGGElement>('.links')
+    this.linkSel = this.g
+      .select<SVGGElement>('.links')
       .selectAll<SVGLineElement, GraphLink>('line')
       .data(links, (d: GraphLink) => {
         const s = typeof d.source === 'string' ? d.source : d.source.id;
@@ -131,19 +157,23 @@ export class TopologyMapComponent implements AfterViewInit, OnDestroy {
 
     this.linkSel.exit().remove();
 
-    const linkEnter = this.linkSel.enter().append('line')
+    const linkEnter = this.linkSel
+      .enter()
+      .append('line')
       .attr('class', 'link')
-      .attr('stroke-dasharray', (d: GraphLink) => d.isVpn ? '6 3' : null)
+      .attr('stroke-dasharray', (d: GraphLink) => (d.isVpn ? '6 3' : null))
       .on('click', (e: MouseEvent, d: GraphLink) => {
         e.stopPropagation();
         this.highlightNetwork(d.cidr);
       });
 
-    this.linkSel = linkEnter.merge(this.linkSel)
+    this.linkSel = linkEnter
+      .merge(this.linkSel)
       .attr('stroke', (d: GraphLink) => this.colorMap.get(d.cidr) ?? '#888');
 
     // ── Link labels ───────────────────────────────────────────────────────
-    this.labelSel = this.g.select<SVGGElement>('.link-labels')
+    this.labelSel = this.g
+      .select<SVGGElement>('.link-labels')
       .selectAll<SVGTextElement, GraphLink>('text')
       .data(links, (d: GraphLink) => {
         const s = typeof d.source === 'string' ? d.source : (d.source as GraphNode).id;
@@ -153,25 +183,36 @@ export class TopologyMapComponent implements AfterViewInit, OnDestroy {
 
     this.labelSel.exit().remove();
 
-    this.labelSel = this.labelSel.enter().append('text')
+    this.labelSel = this.labelSel
+      .enter()
+      .append('text')
       .attr('class', 'link-label')
       .merge(this.labelSel)
       .text((d: GraphLink) => d.label)
       .attr('fill', (d: GraphLink) => this.colorMap.get(d.cidr) ?? '#888');
 
     // ── Nodes ─────────────────────────────────────────────────────────────
-    this.nodeSel = this.g.select<SVGGElement>('.nodes')
+    this.nodeSel = this.g
+      .select<SVGGElement>('.nodes')
       .selectAll<SVGGElement, GraphNode>('g.node')
       .data(nodes, (d: GraphNode) => d.id);
 
     this.nodeSel.exit().remove();
 
-    const nodeEnter = this.nodeSel.enter().append('g')
+    const nodeEnter = this.nodeSel
+      .enter()
+      .append('g')
       .attr('class', 'node')
-      .call(d3.drag<SVGGElement, GraphNode>()
-        .on('start', (e, d) => this.dragStart(e, d))
-        .on('drag',  (e, d) => { d.fx = e.x; d.fy = e.y; })
-        .on('end',   (e, d) => this.dragEnd(e, d)))
+      .call(
+        d3
+          .drag<SVGGElement, GraphNode>()
+          .on('start', (e, d) => this.dragStart(e, d))
+          .on('drag', (e, d) => {
+            d.fx = e.x;
+            d.fy = e.y;
+          })
+          .on('end', (e, d) => this.dragEnd(e, d)),
+      )
       .on('click', (e: MouseEvent, d: GraphNode) => {
         e.stopPropagation();
         this.highlightDevice(d.id);
@@ -179,63 +220,70 @@ export class TopologyMapComponent implements AfterViewInit, OnDestroy {
       });
 
     // Background rect
-    nodeEnter.append('rect')
+    nodeEnter
+      .append('rect')
       .attr('class', 'node-bg')
-      .attr('x', -52).attr('y', -20)
-      .attr('width', 104).attr('height', 40)
+      .attr('x', -52)
+      .attr('y', -20)
+      .attr('width', 104)
+      .attr('height', 40)
       .attr('rx', 8);
 
     // Device name
-    nodeEnter.append('text')
-      .attr('class', 'node-name')
-      .attr('y', -4);
+    nodeEnter.append('text').attr('class', 'node-name').attr('y', -4);
 
     // Device type
-    nodeEnter.append('text')
-      .attr('class', 'node-type')
-      .attr('y', 11);
+    nodeEnter.append('text').attr('class', 'node-type').attr('y', 11);
 
     // Interface colour bars (bottom of rect)
     nodeEnter.append('g').attr('class', 'iface-bars');
 
     // Status dot (top-right)
-    nodeEnter.append('circle')
+    nodeEnter
+      .append('circle')
       .attr('class', 'status-dot')
-      .attr('cx', 46).attr('cy', -14)
+      .attr('cx', 46)
+      .attr('cy', -14)
       .attr('r', 4);
 
     // Merge and update all mutable attrs
     this.nodeSel = nodeEnter.merge(this.nodeSel);
 
-    this.nodeSel.select('.node-bg')
-      .attr('stroke', (d: GraphNode) => this.primaryColor(d));
+    this.nodeSel.select('.node-bg').attr('stroke', (d: GraphNode) => this.primaryColor(d));
 
-    this.nodeSel.select('.node-name')
-      .text((d: GraphNode) => d.hostname.length > 13 ? d.hostname.slice(0, 12) + '…' : d.hostname);
+    this.nodeSel
+      .select('.node-name')
+      .text((d: GraphNode) =>
+        d.hostname.length > 13 ? d.hostname.slice(0, 12) + '…' : d.hostname,
+      );
 
-    this.nodeSel.select('.node-type')
-      .text((d: GraphNode) => `${d.os ?? ''}/${d.arch ?? ''}`);
+    this.nodeSel.select('.node-type').text((d: GraphNode) => `${d.os ?? ''}/${d.arch ?? ''}`);
 
-    this.nodeSel.select('.status-dot')
-      .attr('fill', (d: GraphNode) => d.status === 'online' ? '#00d4aa' : '#ff4757');
+    this.nodeSel
+      .select('.status-dot')
+      .attr('fill', (d: GraphNode) => (d.status === 'online' ? '#00d4aa' : '#ff4757'));
 
     // Rebuild iface bars — capture colorMap via arrow function closure
     const colorMap = this.colorMap;
-    this.nodeSel.select<SVGGElement>('.iface-bars').each((d: GraphNode, _i: number, groups: SVGGElement[] | ArrayLike<SVGGElement>) => {
-      const g = d3.select(Array.from(groups)[_i]);
-      g.selectAll('*').remove();
-      const cidrs = uniqueCidrs(d);
-      if (cidrs.length === 0) return;
-      const bw = 104 / cidrs.length;
-      cidrs.forEach((cidr, idx) => {
-        const color = colorMap.get(cidr) ?? '#888';
-        g.append('rect')
-          .attr('x', -52 + idx * bw).attr('y', 16)
-          .attr('width', bw).attr('height', 4)
-          .attr('fill', color)
-          .attr('rx', idx === 0 ? 2 : (idx === cidrs.length - 1 ? 2 : 0));
+    this.nodeSel
+      .select<SVGGElement>('.iface-bars')
+      .each((d: GraphNode, _i: number, groups: SVGGElement[] | ArrayLike<SVGGElement>) => {
+        const g = d3.select(Array.from(groups)[_i]);
+        g.selectAll('*').remove();
+        const cidrs = uniqueCidrs(d);
+        if (cidrs.length === 0) return;
+        const bw = 104 / cidrs.length;
+        cidrs.forEach((cidr, idx) => {
+          const color = colorMap.get(cidr) ?? '#888';
+          g.append('rect')
+            .attr('x', -52 + idx * bw)
+            .attr('y', 16)
+            .attr('width', bw)
+            .attr('height', 4)
+            .attr('fill', color)
+            .attr('rx', idx === 0 ? 2 : idx === cidrs.length - 1 ? 2 : 0);
+        });
       });
-    });
 
     // Restart simulation with updated data
     this.sim.nodes(nodes);
@@ -266,11 +314,13 @@ export class TopologyMapComponent implements AfterViewInit, OnDestroy {
   highlightDevice(id: string): void {
     this.nodeSel?.classed('dimmed', (d: GraphNode) => d.id !== id);
     this.linkSel?.classed('dimmed', (d: GraphLink) => {
-      const s = (d.source as GraphNode).id, t = (d.target as GraphNode).id;
+      const s = (d.source as GraphNode).id,
+        t = (d.target as GraphNode).id;
       return s !== id && t !== id;
     });
     this.linkSel?.classed('highlighted', (d: GraphLink) => {
-      const s = (d.source as GraphNode).id, t = (d.target as GraphNode).id;
+      const s = (d.source as GraphNode).id,
+        t = (d.target as GraphNode).id;
       return s === id || t === id;
     });
   }
@@ -289,19 +339,21 @@ export class TopologyMapComponent implements AfterViewInit, OnDestroy {
   }
 
   highlightPath(hops: RouteHop[]): void {
-    const hopIds = new Set(hops.map(h => h.device_id));
+    const hopIds = new Set(hops.map((h) => h.device_id));
     const edgeKeys = new Set<string>();
     for (let i = 1; i < hops.length; i++) {
-      edgeKeys.add(`${hops[i-1].device_id}|${hops[i].device_id}|${hops[i].via_cidr}`);
-      edgeKeys.add(`${hops[i].device_id}|${hops[i-1].device_id}|${hops[i].via_cidr}`);
+      edgeKeys.add(`${hops[i - 1].device_id}|${hops[i].device_id}|${hops[i].via_cidr}`);
+      edgeKeys.add(`${hops[i].device_id}|${hops[i - 1].device_id}|${hops[i].via_cidr}`);
     }
     this.nodeSel?.classed('dimmed', (d: GraphNode) => !hopIds.has(d.id));
     this.linkSel?.classed('dimmed', (d: GraphLink) => {
-      const s = (d.source as GraphNode).id, t = (d.target as GraphNode).id;
+      const s = (d.source as GraphNode).id,
+        t = (d.target as GraphNode).id;
       return !edgeKeys.has(`${s}|${t}|${d.cidr}`);
     });
     this.linkSel?.classed('highlighted', (d: GraphLink) => {
-      const s = (d.source as GraphNode).id, t = (d.target as GraphNode).id;
+      const s = (d.source as GraphNode).id,
+        t = (d.target as GraphNode).id;
       return edgeKeys.has(`${s}|${t}|${d.cidr}`);
     });
   }
@@ -313,26 +365,34 @@ export class TopologyMapComponent implements AfterViewInit, OnDestroy {
 
   // ── Zoom controls ──────────────────────────────────────────────────────────
 
-  zoomIn(): void  { this.svg.transition().call(this.zoom.scaleBy, 1.4); }
-  zoomOut(): void { this.svg.transition().call(this.zoom.scaleBy, 0.71); }
+  zoomIn(): void {
+    this.svg.transition().call(this.zoom.scaleBy, 1.4);
+  }
+  zoomOut(): void {
+    this.svg.transition().call(this.zoom.scaleBy, 0.71);
+  }
   resetZoom(): void {
     const wrap = this.wrapRef.nativeElement;
-    this.svg.transition().call(
-      this.zoom.transform,
-      d3.zoomIdentity.translate(wrap.clientWidth / 2, wrap.clientHeight / 2).scale(1)
-    );
+    this.svg
+      .transition()
+      .call(
+        this.zoom.transform,
+        d3.zoomIdentity.translate(wrap.clientWidth / 2, wrap.clientHeight / 2).scale(1),
+      );
   }
 
   // ── Drag ──────────────────────────────────────────────────────────────────
 
   private dragStart(e: d3.D3DragEvent<SVGGElement, GraphNode, GraphNode>, d: GraphNode): void {
     if (!e.active) this.sim.alphaTarget(0.3).restart();
-    d.fx = d.x; d.fy = d.y;
+    d.fx = d.x;
+    d.fy = d.y;
   }
 
   private dragEnd(e: d3.D3DragEvent<SVGGElement, GraphNode, GraphNode>, d: GraphNode): void {
     if (!e.active) this.sim.alphaTarget(0);
-    d.fx = null; d.fy = null;
+    d.fx = null;
+    d.fy = null;
   }
 
   // ── Resize ────────────────────────────────────────────────────────────────
@@ -341,7 +401,8 @@ export class TopologyMapComponent implements AfterViewInit, OnDestroy {
     const wrap = this.wrapRef.nativeElement;
     this.svg.attr('width', wrap.clientWidth).attr('height', wrap.clientHeight);
     (this.sim.force('center') as d3.ForceCenter<GraphNode>)
-      .x(wrap.clientWidth / 2).y(wrap.clientHeight / 2);
+      .x(wrap.clientWidth / 2)
+      .y(wrap.clientHeight / 2);
     this.sim.alpha(0.1).restart();
   }
 
@@ -384,7 +445,7 @@ function cidrNetworkFromAddress(address: string): string | null {
   const prefix = parseInt(parts[1], 10);
   if (ip.length !== 4 || isNaN(prefix) || prefix < 0 || prefix > 32) return null;
   const mask = prefix === 0 ? 0 : (~0 << (32 - prefix)) >>> 0;
-  const ipInt = (ip[0] << 24 | ip[1] << 16 | ip[2] << 8 | ip[3]) >>> 0;
+  const ipInt = ((ip[0] << 24) | (ip[1] << 16) | (ip[2] << 8) | ip[3]) >>> 0;
   const net = (ipInt & mask) >>> 0;
   return `${net >>> 24}.${(net >> 16) & 0xff}.${(net >> 8) & 0xff}.${net & 0xff}/${prefix}`;
 }

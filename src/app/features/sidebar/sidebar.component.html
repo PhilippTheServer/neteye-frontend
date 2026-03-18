@@ -1,9 +1,11 @@
 <div class="sidebar">
   <!-- Tabs -->
   <div class="tabs">
-    <button [class.active]="activeTab() === 'devices'"  (click)="setTab('devices')">Devices</button>
-    <button [class.active]="activeTab() === 'networks'" (click)="setTab('networks')">Networks</button>
-    <button [class.active]="activeTab() === 'routing'"  (click)="setTab('routing')">Routing</button>
+    <button [class.active]="activeTab() === 'devices'" (click)="setTab('devices')">Devices</button>
+    <button [class.active]="activeTab() === 'networks'" (click)="setTab('networks')">
+      Networks
+    </button>
+    <button [class.active]="activeTab() === 'routing'" (click)="setTab('routing')">Routing</button>
   </div>
 
   <!-- ── Devices tab ─────────────────────────────────────────────────────── -->
@@ -13,8 +15,11 @@
         <div class="empty-state">No devices connected yet.</div>
       }
       @for (d of devices(); track trackById($index, d)) {
-        <div class="device-card" [class.selected]="selectedDevice?.id === d.id"
-             (click)="selectDevice(d)">
+        <div
+          class="device-card"
+          [class.selected]="selectedDevice?.id === d.id"
+          (click)="selectDevice(d)"
+        >
           <div class="device-header">
             <span class="status-dot" [class.online]="d.status === 'online'"></span>
             <span class="device-name">{{ d.hostname }}</span>
@@ -25,17 +30,21 @@
               <div class="iface-row">
                 <div class="iface-bars">
                   @for (addr of iface.addresses; track addr.address) {
-                    <span class="iface-dot"
-                          [style.background]="networkColor(addr.address.split('/')[0])">
+                    <span
+                      class="iface-dot"
+                      [style.background]="networkColor(addr.address.split('/')[0])"
+                    >
                     </span>
                   }
                 </div>
                 <span class="iface-name">{{ iface.name }}</span>
                 <span class="iface-addrs">
                   @for (addr of iface.addresses; track addr.address) {
-                    <span class="addr-badge"
-                          [style.border-color]="'transparent'"
-                          [style.color]="'var(--text2)'">
+                    <span
+                      class="addr-badge"
+                      [style.border-color]="'transparent'"
+                      [style.color]="'var(--text2)'"
+                    >
                       {{ addr.address }}
                     </span>
                   }
@@ -96,7 +105,11 @@
         </select>
 
         <button class="btn-primary" (click)="traceRoute()" [disabled]="routeLoading">
-          @if (routeLoading) { Tracing… } @else { ▶ Trace Route }
+          @if (routeLoading) {
+            Tracing…
+          } @else {
+            ▶ Trace Route
+          }
         </button>
         <button class="btn-secondary" (click)="clearRoute()">Clear</button>
       </div>
@@ -129,8 +142,8 @@
               </div>
             }
             <div class="route-summary">
-              {{ routeResult.hops.length - 1 }} hop(s) ·
-              networks: {{ routeResult.networks.join(', ') }}
+              {{ routeResult.hops.length - 1 }} hop(s) · networks:
+              {{ routeResult.networks.join(', ') }}
             </div>
           }
         </div>

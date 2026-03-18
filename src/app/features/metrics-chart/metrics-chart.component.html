@@ -21,11 +21,15 @@
       <div class="stat-row">
         <div class="stat">
           <span class="stat-label">RX</span>
-          <span class="stat-value rx">{{ (latestMetrics.bytesRecvRate / 1024 / 1024).toFixed(2) }} MB/s</span>
+          <span class="stat-value rx"
+            >{{ (latestMetrics.bytesRecvRate / 1024 / 1024).toFixed(2) }} MB/s</span
+          >
         </div>
         <div class="stat">
           <span class="stat-label">TX</span>
-          <span class="stat-value tx">{{ (latestMetrics.bytesSentRate / 1024 / 1024).toFixed(2) }} MB/s</span>
+          <span class="stat-value tx"
+            >{{ (latestMetrics.bytesSentRate / 1024 / 1024).toFixed(2) }} MB/s</span
+          >
         </div>
         <div class="stat">
           <span class="stat-label">ERR-IN</span>

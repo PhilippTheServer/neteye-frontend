@@ -1,6 +1,4 @@
-import {
-  Component, Input, Output, EventEmitter, signal, computed, ViewChild
-} from '@angular/core';
+import { Component, Input, Output, EventEmitter, signal, computed } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { DeviceInfo, RouteAnalysis, RouteHop } from '../../core/models/topology.models';
@@ -69,7 +67,9 @@ export class SidebarComponent {
 
   constructor(readonly topo: TopologyService) {}
 
-  setTab(t: Tab): void { this.activeTab.set(t); }
+  setTab(t: Tab): void {
+    this.activeTab.set(t);
+  }
 
   selectDevice(d: DeviceInfo): void {
     this.deviceClick.emit(d);
@@ -119,16 +119,22 @@ export class SidebarComponent {
   }
 
   interfaceAddresses(d: DeviceInfo): string {
-    return d.interfaces.flatMap(i => i.addresses.map(a => a.address)).join(', ');
+    return d.interfaces.flatMap((i) => i.addresses.map((a) => a.address)).join(', ');
   }
 
   networkColor(cidr: string): string {
     return this.mapRef?.getNetworkColor(cidr) ?? '#888';
   }
 
-  trackById(_: number, d: DeviceInfo): string { return d.id; }
-  trackByCidr(_: number, n: NetworkEntry): string { return n.cidr; }
-  trackByHop(_: number, h: RouteHop): string { return h.device_id; }
+  trackById(_: number, d: DeviceInfo): string {
+    return d.id;
+  }
+  trackByCidr(_: number, n: NetworkEntry): string {
+    return n.cidr;
+  }
+  trackByHop(_: number, h: RouteHop): string {
+    return h.device_id;
+  }
 }
 
 function cidrNetwork(address: string): string | null {
@@ -138,7 +144,7 @@ function cidrNetwork(address: string): string | null {
   const prefix = parseInt(parts[1], 10);
   if (ip.length !== 4 || isNaN(prefix) || prefix < 0 || prefix > 32) return null;
   const mask = prefix === 0 ? 0 : (~0 << (32 - prefix)) >>> 0;
-  const ipInt = (ip[0] << 24 | ip[1] << 16 | ip[2] << 8 | ip[3]) >>> 0;
+  const ipInt = ((ip[0] << 24) | (ip[1] << 16) | (ip[2] << 8) | ip[3]) >>> 0;
   const net = (ipInt & mask) >>> 0;
   return `${net >>> 24}.${(net >> 16) & 0xff}.${(net >> 8) & 0xff}.${net & 0xff}/${prefix}`;
 }

@@ -1,8 +1,13 @@
 import { Injectable, signal, computed, OnDestroy } from '@angular/core';
 import { HttpClient } from '@angular/common/http';
 import {
-  DeviceInfo, FrontendMessage, MetricsUpdate, GraphNode, GraphLink,
-  buildLinks, RouteAnalysis
+  DeviceInfo,
+  FrontendMessage,
+  MetricsUpdate,
+  GraphNode,
+  GraphLink,
+  buildLinks,
+  RouteAnalysis,
 } from '../models/topology.models';
 import { environment } from '../../../environments/environment';
 import { LogService } from './log.service';
@@ -32,19 +37,18 @@ export class TopologyService implements OnDestroy {
   // Per-device per-interface metrics ring buffer: deviceId+ifaceName → series
   private metricsBuffers = new Map<string, MetricsSeries[]>();
 
-  readonly graphNodes = computed<GraphNode[]>(() =>
-    [...this.devices().values()] as GraphNode[]
-  );
+  readonly graphNodes = computed<GraphNode[]>(() => [...this.devices().values()] as GraphNode[]);
 
-  readonly graphLinks = computed<GraphLink[]>(() =>
-    buildLinks([...this.devices().values()])
-  );
+  readonly graphLinks = computed<GraphLink[]>(() => buildLinks([...this.devices().values()]));
 
   private ws: WebSocket | null = null;
   private reconnectTimer: ReturnType<typeof setTimeout> | null = null;
   private reconnectDelay = 2000;
 
-  constructor(private http: HttpClient, private log: LogService) {
+  constructor(
+    private http: HttpClient,
+    private log: LogService,
+  ) {
     this.log.info(COMPONENT, 'initializing', { wsUrl: environment.wsUrl });
     this.connect();
   }
@@ -76,7 +80,10 @@ export class TopologyService implements OnDestroy {
 
     this.ws.onclose = (event) => {
       this.connected.set(false);
-      this.log.warn(COMPONENT, 'websocket closed', { code: event.code, reason: event.reason || 'none' });
+      this.log.warn(COMPONENT, 'websocket closed', {
+        code: event.code,
+        reason: event.reason || 'none',
+      });
       this.scheduleReconnect();
     };
 
@@ -107,24 +114,27 @@ export class TopologyService implements OnDestroy {
       }
       this.devices.set(map);
       this.log.info(COMPONENT, 'topology snapshot applied', { deviceCount: map.size });
-
     } else if (msg.type === 'device_update') {
-      this.devices.update(m => {
+      this.devices.update((m) => {
         const next = new Map(m);
         next.set(msg.device_update.id, msg.device_update);
         return next;
       });
-      this.log.debug(COMPONENT, 'device updated', { id: msg.device_update.id, hostname: msg.device_update.hostname });
-
+      this.log.debug(COMPONENT, 'device updated', {
+        id: msg.device_update.id,
+        hostname: msg.device_update.hostname,
+      });
     } else if (msg.type === 'device_offline') {
-      this.devices.update(m => {
+      this.devices.update((m) => {
         const next = new Map(m);
         const d = next.get(msg.device_offline.device_id);
         if (d) next.set(d.id, { ...d, status: 'offline' });
         return next;
       });
-      this.log.warn(COMPONENT, 'device went offline', { deviceId: msg.device_offline.device_id, hostname: msg.device_offline.hostname });
-
+      this.log.warn(COMPONENT, 'device went offline', {
+        deviceId: msg.device_offline.device_id,
+        hostname: msg.device_offline.hostname,
+      });
     } else if (msg.type === 'metrics') {
       this.pushMetrics(msg.metrics);
     }
@@ -162,7 +172,7 @@ export class TopologyService implements OnDestroy {
   analyzeRoute(srcId: string, dstId: string) {
     this.log.debug(COMPONENT, 'route analysis requested', { src: srcId, dst: dstId });
     return this.http.get<RouteAnalysis>(
-      `${environment.apiUrl}/api/route?src=${srcId}&dst=${dstId}`
+      `${environment.apiUrl}/api/route?src=${srcId}&dst=${dstId}`,
     );
   }
 

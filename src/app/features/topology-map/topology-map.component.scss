@@ -10,8 +10,8 @@
   height: 100%;
   background: var(--bg);
   background-image:
-    radial-gradient(circle at 20% 20%, rgba(0,212,170,.03) 0%, transparent 50%),
-    radial-gradient(circle at 80% 80%, rgba(0,151,255,.03) 0%, transparent 50%);
+    radial-gradient(circle at 20% 20%, rgba(0, 212, 170, 0.03) 0%, transparent 50%),
+    radial-gradient(circle at 80% 80%, rgba(0, 151, 255, 0.03) 0%, transparent 50%);
   overflow: hidden;
 }
 
@@ -19,7 +19,9 @@
   width: 100%;
   height: 100%;
   cursor: grab;
-  &:active { cursor: grabbing; }
+  &:active {
+    cursor: grabbing;
+  }
 }
 
 // ── Links ─────────────────────────────────────────────────────────────────────
@@ -27,12 +29,22 @@
 ::ng-deep .link {
   stroke-width: 2;
   opacity: 0.55;
-  transition: opacity .2s, stroke-width .2s;
+  transition:
+    opacity 0.2s,
+    stroke-width 0.2s;
   cursor: pointer;
 
-  &:hover { opacity: 1; stroke-width: 3; }
-  &.highlighted { opacity: 1; stroke-width: 4; }
-  &.dimmed { opacity: .08; }
+  &:hover {
+    opacity: 1;
+    stroke-width: 3;
+  }
+  &.highlighted {
+    opacity: 1;
+    stroke-width: 4;
+  }
+  &.dimmed {
+    opacity: 0.08;
+  }
 }
 
 ::ng-deep .link-label {
@@ -49,19 +61,28 @@
 
 ::ng-deep .node {
   cursor: pointer;
-  transition: opacity .2s;
+  transition: opacity 0.2s;
 
-  &.dimmed { opacity: .15; }
+  &.dimmed {
+    opacity: 0.15;
+  }
 
   .node-bg {
     fill: var(--bg3);
     stroke-width: 1.5;
-    transition: stroke-width .15s, filter .15s;
+    transition:
+      stroke-width 0.15s,
+      filter 0.15s;
 
-    &:hover { stroke-width: 2.5; filter: drop-shadow(0 0 6px currentColor); }
+    &:hover {
+      stroke-width: 2.5;
+      filter: drop-shadow(0 0 6px currentColor);
+    }
   }
 
-  &:hover .node-bg { filter: drop-shadow(0 0 6px currentColor); }
+  &:hover .node-bg {
+    filter: drop-shadow(0 0 6px currentColor);
+  }
 
   .node-name {
     font-size: 11px;
@@ -81,7 +102,7 @@
   }
 
   .status-dot {
-    transition: fill .3s;
+    transition: fill 0.3s;
   }
 
   .iface-bars rect {
@@ -111,7 +132,7 @@
     display: flex;
     align-items: center;
     justify-content: center;
-    transition: all .15s;
+    transition: all 0.15s;
 
     &:hover {
       background: var(--bg3);

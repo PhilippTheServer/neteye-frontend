@@ -73,10 +73,10 @@ export interface DeviceOfflineMsg {
 
 // Discriminated union for all messages from the center.
 export type FrontendMessage =
-  | { type: 'topology';       topology: TopologySnapshot }
-  | { type: 'device_update';  device_update: DeviceInfo }
+  | { type: 'topology'; topology: TopologySnapshot }
+  | { type: 'device_update'; device_update: DeviceInfo }
   | { type: 'device_offline'; device_offline: DeviceOfflineMsg }
-  | { type: 'metrics';        metrics: MetricsUpdate };
+  | { type: 'metrics'; metrics: MetricsUpdate };
 
 // ── Graph types (D3 augmented) ────────────────────────────────────────────────
 
@@ -167,7 +167,8 @@ export function buildLinks(devices: DeviceInfo[]): GraphLink[] {
   for (const [cidr, members] of netMap) {
     for (let i = 0; i < members.length; i++) {
       for (let j = i + 1; j < members.length; j++) {
-        const a = members[i], b = members[j];
+        const a = members[i],
+          b = members[j];
         if (a.device.id === b.device.id) continue;
         // De-duplicate: use sorted id pair as key (one link per subnet per pair)
         const key = [a.device.id, b.device.id].sort().join('|') + '|' + cidr;

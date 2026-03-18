@@ -9,12 +9,7 @@ import { DeviceInfo } from './core/models/topology.models';
 @Component({
   selector: 'app-root',
   standalone: true,
-  imports: [
-    CommonModule,
-    TopologyMapComponent,
-    SidebarComponent,
-    MetricsChartComponent,
-  ],
+  imports: [CommonModule, TopologyMapComponent, SidebarComponent, MetricsChartComponent],
   templateUrl: './app.html',
   styleUrl: './app.scss',
 })
@@ -38,7 +33,7 @@ export class AppComponent {
   }
 
   get onlineCount(): number {
-    return [...this.topo.devices().values()].filter(d => d.status === 'online').length;
+    return [...this.topo.devices().values()].filter((d) => d.status === 'online').length;
   }
 
   get totalCount(): number {

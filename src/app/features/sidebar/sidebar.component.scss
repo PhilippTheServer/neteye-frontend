@@ -20,17 +20,22 @@
     padding: 10px 8px;
     font-size: 11px;
     font-family: var(--mono);
-    letter-spacing: .8px;
+    letter-spacing: 0.8px;
     text-transform: uppercase;
     color: var(--text2);
     background: none;
     border: none;
     border-bottom: 2px solid transparent;
     cursor: pointer;
-    transition: all .15s;
+    transition: all 0.15s;
 
-    &:hover { color: var(--text); }
-    &.active { color: var(--accent); border-bottom-color: var(--accent); }
+    &:hover {
+      color: var(--text);
+    }
+    &.active {
+      color: var(--accent);
+      border-bottom-color: var(--accent);
+    }
   }
 }
 
@@ -41,9 +46,16 @@
   overflow-y: auto;
   padding: 12px;
 
-  &::-webkit-scrollbar { width: 4px; }
-  &::-webkit-scrollbar-track { background: transparent; }
-  &::-webkit-scrollbar-thumb { background: var(--border2); border-radius: 2px; }
+  &::-webkit-scrollbar {
+    width: 4px;
+  }
+  &::-webkit-scrollbar-track {
+    background: transparent;
+  }
+  &::-webkit-scrollbar-thumb {
+    background: var(--border2);
+    border-radius: 2px;
+  }
 }
 
 .empty-state {
@@ -62,11 +74,15 @@
   border-radius: 6px;
   margin-bottom: 8px;
   cursor: pointer;
-  transition: border-color .15s;
+  transition: border-color 0.15s;
   overflow: hidden;
 
-  &:hover { border-color: var(--border2); }
-  &.selected { border-color: var(--accent); }
+  &:hover {
+    border-color: var(--border2);
+  }
+  &.selected {
+    border-color: var(--accent);
+  }
 }
 
 .device-header {
@@ -83,12 +99,20 @@
   background: var(--text2);
   flex-shrink: 0;
 
-  &.online { background: var(--accent); animation: pulse 2s infinite; }
+  &.online {
+    background: var(--accent);
+    animation: pulse 2s infinite;
+  }
 }
 
 @keyframes pulse {
-  0%, 100% { opacity: 1; }
-  50% { opacity: .3; }
+  0%,
+  100% {
+    opacity: 1;
+  }
+  50% {
+    opacity: 0.3;
+  }
 }
 
 .device-name {
@@ -152,7 +176,9 @@
 .iface-state {
   font-size: 9px;
   color: var(--text2);
-  &.up { color: var(--accent); }
+  &.up {
+    color: var(--accent);
+  }
 }
 
 // ── Networks ──────────────────────────────────────────────────────────────────
@@ -164,10 +190,14 @@
   padding: 9px 0;
   border-bottom: 1px solid var(--border);
   cursor: pointer;
-  transition: opacity .15s;
+  transition: opacity 0.15s;
 
-  &:last-child { border-bottom: none; }
-  &:hover { opacity: .8; }
+  &:last-child {
+    border-bottom: none;
+  }
+  &:hover {
+    opacity: 0.8;
+  }
 }
 
 .net-swatch {
@@ -177,7 +207,10 @@
   flex-shrink: 0;
 }
 
-.net-info { flex: 1; min-width: 0; }
+.net-info {
+  flex: 1;
+  min-width: 0;
+}
 
 .net-cidr {
   font-size: 12px;
@@ -194,7 +227,14 @@
   flex-wrap: wrap;
   margin-top: 2px;
 
-  span { &::after { content: ','; } &:last-child::after { content: ''; } }
+  span {
+    &::after {
+      content: ',';
+    }
+    &:last-child::after {
+      content: '';
+    }
+  }
 }
 
 .net-count {
@@ -237,23 +277,30 @@ select {
   outline: none;
   cursor: pointer;
 
-  &:focus { border-color: var(--accent); }
+  &:focus {
+    border-color: var(--accent);
+  }
 }
 
 .btn-primary {
   padding: 9px;
-  background: rgba(0,212,170,.12);
-  border: 1px solid rgba(0,212,170,.3);
+  background: rgba(0, 212, 170, 0.12);
+  border: 1px solid rgba(0, 212, 170, 0.3);
   color: var(--accent);
   font-family: var(--mono);
   font-size: 12px;
   letter-spacing: 1px;
   border-radius: 4px;
   cursor: pointer;
-  transition: all .15s;
+  transition: all 0.15s;
 
-  &:hover:not(:disabled) { background: rgba(0,212,170,.2); }
-  &:disabled { opacity: .5; cursor: not-allowed; }
+  &:hover:not(:disabled) {
+    background: rgba(0, 212, 170, 0.2);
+  }
+  &:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+  }
 }
 
 .btn-secondary {
@@ -265,9 +312,11 @@ select {
   font-size: 11px;
   border-radius: 4px;
   cursor: pointer;
-  transition: all .15s;
+  transition: all 0.15s;
 
-  &:hover { color: var(--text); }
+  &:hover {
+    color: var(--text);
+  }
 }
 
 .route-error {
@@ -275,8 +324,8 @@ select {
   font-size: 11px;
   font-family: var(--mono);
   padding: 8px;
-  background: rgba(255,71,87,.08);
-  border: 1px solid rgba(255,71,87,.2);
+  background: rgba(255, 71, 87, 0.08);
+  border: 1px solid rgba(255, 71, 87, 0.2);
   border-radius: 4px;
   margin-bottom: 8px;
 }
@@ -308,9 +357,15 @@ select {
   margin: 2px 0;
 }
 
-.hop-num { color: var(--text2); min-width: 18px; }
+.hop-num {
+  color: var(--text2);
+  min-width: 18px;
+}
 
-.hop-host { color: var(--accent); font-weight: 500; }
+.hop-host {
+  color: var(--accent);
+  font-weight: 500;
+}
 
 .hop-via {
   color: var(--text2);

@@ -25,10 +25,7 @@
 
     <!-- Canvas area -->
     <div class="canvas-area">
-      <app-topology-map
-        #topoMap
-        (deviceSelected)="onDeviceSelected($event)"
-      />
+      <app-topology-map #topoMap (deviceSelected)="onDeviceSelected($event)" />
 
       <!-- Device detail panel (slides in from right) -->
       @if (detailOpen()) {
