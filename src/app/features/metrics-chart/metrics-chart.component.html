@@ -1,0 +1,73 @@
+@if (device) {
+  <div class="metrics-panel">
+    <div class="metrics-header">
+      <span class="panel-title">{{ device.hostname }}</span>
+      <div class="controls">
+        <select [(ngModel)]="selectedIface" (ngModelChange)="onIfaceChange()">
+          @for (iface of device.interfaces; track iface.name) {
+            <option [value]="iface.name">{{ iface.name }}</option>
+          }
+        </select>
+        <select [(ngModel)]="selectedMetric" (ngModelChange)="onMetricChange()">
+          <option value="throughput">Throughput</option>
+          <option value="packets">Packets/s</option>
+          <option value="errors">Errors/s</option>
+        </select>
+      </div>
+    </div>
+
+    <!-- Live stat badges -->
+    @if (latestMetrics) {
+      <div class="stat-row">
+        <div class="stat">
+          <span class="stat-label">RX</span>
+          <span class="stat-value rx">{{ (latestMetrics.bytesRecvRate / 1024 / 1024).toFixed(2) }} MB/s</span>
+        </div>
+        <div class="stat">
+          <span class="stat-label">TX</span>
+          <span class="stat-value tx">{{ (latestMetrics.bytesSentRate / 1024 / 1024).toFixed(2) }} MB/s</span>
+        </div>
+        <div class="stat">
+          <span class="stat-label">ERR-IN</span>
+          <span class="stat-value err">{{ latestMetrics.errorsInRate.toFixed(1) }}/s</span>
+        </div>
+        <div class="stat">
+          <span class="stat-label">DROPS</span>
+          <span class="stat-value err">{{ latestMetrics.dropsInRate.toFixed(1) }}/s</span>
+        </div>
+      </div>
+    }
+
+    <!-- D3 chart -->
+    <div #chartWrap class="chart-wrap"></div>
+
+    <!-- Routes table -->
+    @if (device.routes && device.routes.length > 0) {
+      <div class="routes-section">
+        <div class="section-label">Routing Table</div>
+        <table class="routes-table">
+          <thead>
+            <tr>
+              <th>Destination</th>
+              <th>Gateway</th>
+              <th>Iface</th>
+              <th>Metric</th>
+              <th>Flags</th>
+            </tr>
+          </thead>
+          <tbody>
+            @for (route of device.routes; track route.destination + route.interface_name) {
+              <tr>
+                <td>{{ route.destination || '0.0.0.0/0' }}</td>
+                <td>{{ route.gateway || '—' }}</td>
+                <td>{{ route.interface_name }}</td>
+                <td>{{ route.metric }}</td>
+                <td class="flags">{{ route.flags }}</td>
+              </tr>
+            }
+          </tbody>
+        </table>
+      </div>
+    }
+  </div>
+}

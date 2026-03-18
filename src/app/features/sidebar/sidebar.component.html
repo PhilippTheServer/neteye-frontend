@@ -1,0 +1,140 @@
+<div class="sidebar">
+  <!-- Tabs -->
+  <div class="tabs">
+    <button [class.active]="activeTab() === 'devices'"  (click)="setTab('devices')">Devices</button>
+    <button [class.active]="activeTab() === 'networks'" (click)="setTab('networks')">Networks</button>
+    <button [class.active]="activeTab() === 'routing'"  (click)="setTab('routing')">Routing</button>
+  </div>
+
+  <!-- ── Devices tab ─────────────────────────────────────────────────────── -->
+  @if (activeTab() === 'devices') {
+    <div class="tab-content">
+      @if (devices().length === 0) {
+        <div class="empty-state">No devices connected yet.</div>
+      }
+      @for (d of devices(); track trackById($index, d)) {
+        <div class="device-card" [class.selected]="selectedDevice?.id === d.id"
+             (click)="selectDevice(d)">
+          <div class="device-header">
+            <span class="status-dot" [class.online]="d.status === 'online'"></span>
+            <span class="device-name">{{ d.hostname }}</span>
+            <span class="device-meta">{{ d.os }}/{{ d.arch }}</span>
+          </div>
+          <div class="iface-list">
+            @for (iface of d.interfaces; track iface.name) {
+              <div class="iface-row">
+                <div class="iface-bars">
+                  @for (addr of iface.addresses; track addr.address) {
+                    <span class="iface-dot"
+                          [style.background]="networkColor(addr.address.split('/')[0])">
+                    </span>
+                  }
+                </div>
+                <span class="iface-name">{{ iface.name }}</span>
+                <span class="iface-addrs">
+                  @for (addr of iface.addresses; track addr.address) {
+                    <span class="addr-badge"
+                          [style.border-color]="'transparent'"
+                          [style.color]="'var(--text2)'">
+                      {{ addr.address }}
+                    </span>
+                  }
+                </span>
+                <span class="iface-state" [class.up]="iface.state === 'up'">{{ iface.state }}</span>
+              </div>
+            }
+          </div>
+        </div>
+      }
+    </div>
+  }
+
+  <!-- ── Networks tab ───────────────────────────────────────────────────────── -->
+  @if (activeTab() === 'networks') {
+    <div class="tab-content">
+      @if (networks().length === 0) {
+        <div class="empty-state">No networks discovered yet.</div>
+      }
+      @for (net of networks(); track trackByCidr($index, net)) {
+        <div class="net-item" (click)="highlightNetwork(net.cidr)">
+          <div class="net-swatch" [style.background]="net.color"></div>
+          <div class="net-info">
+            <div class="net-cidr" [style.color]="net.color">{{ net.cidr }}</div>
+            <div class="net-members-preview">
+              @for (m of net.members.slice(0, 3); track m.id) {
+                <span>{{ m.hostname }}</span>
+              }
+              @if (net.members.length > 3) {
+                <span>+{{ net.members.length - 3 }} more</span>
+              }
+            </div>
+          </div>
+          <div class="net-count">{{ net.memberCount }}</div>
+        </div>
+      }
+    </div>
+  }
+
+  <!-- ── Routing tab ────────────────────────────────────────────────────────── -->
+  @if (activeTab() === 'routing') {
+    <div class="tab-content">
+      <div class="route-form">
+        <label class="form-label">Source</label>
+        <select [(ngModel)]="routeSrcId">
+          <option value="">Select device…</option>
+          @for (d of devices(); track d.id) {
+            <option [value]="d.id">{{ d.hostname }}</option>
+          }
+        </select>
+
+        <label class="form-label">Destination</label>
+        <select [(ngModel)]="routeDstId">
+          <option value="">Select device…</option>
+          @for (d of devices(); track d.id) {
+            <option [value]="d.id">{{ d.hostname }}</option>
+          }
+        </select>
+
+        <button class="btn-primary" (click)="traceRoute()" [disabled]="routeLoading">
+          @if (routeLoading) { Tracing… } @else { ▶ Trace Route }
+        </button>
+        <button class="btn-secondary" (click)="clearRoute()">Clear</button>
+      </div>
+
+      @if (routeError) {
+        <div class="route-error">{{ routeError }}</div>
+      }
+
+      @if (routeResult) {
+        <div class="route-result">
+          @if (!routeResult.found) {
+            <div class="no-path">✗ No path found between these devices.</div>
+          } @else {
+            @for (hop of routeResult.hops; track trackByHop($index, hop)) {
+              @if ($index > 0) {
+                <div class="hop-connector">│</div>
+              }
+              <div class="route-hop">
+                <span class="hop-num">{{ $index + 1 }}.</span>
+                <div class="hop-info">
+                  <span class="hop-host">{{ hop.hostname }}</span>
+                  @if (hop.via_cidr) {
+                    <div class="hop-via">
+                      ↳ via
+                      <span [style.color]="networkColor(hop.via_cidr)">{{ hop.via_cidr }}</span>
+                      &nbsp;({{ hop.ingress_ip }} ↔ {{ hop.egress_ip }})
+                    </div>
+                  }
+                </div>
+              </div>
+            }
+            <div class="route-summary">
+              {{ routeResult.hops.length - 1 }} hop(s) ·
+              networks: {{ routeResult.networks.join(', ') }}
+            </div>
+          }
+        </div>
+      }
+    </div>
+  }
+</div>

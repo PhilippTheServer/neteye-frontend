@@ -1,59 +1,106 @@
-# NeteyeFrontend
+# neteye-frontend
 
-This project was generated using [Angular CLI](https://github.com/angular/angular-cli) version 21.2.0.
+The Angular 21 web interface for neteye. Displays a live force-directed topology
+map of all monitored devices, with real-time metrics, routing table inspection,
+and interactive traffic path analysis.
 
-## Development server
+## Features
 
-To start a local development server, run:
+- **Live topology map** — D3 force-directed graph, updates in real time via
+  WebSocket. Each node represents a device; edges represent shared subnets.
+  Colour-coded by network. Dashed edges indicate point-to-point (/30+) links.
+- **Interface bars** — each device node shows coloured stripes for every subnet
+  it belongs to, giving an instant multi-homing overview.
+- **Devices tab** — full interface list with IP addresses and live up/down state.
+- **Networks tab** — all discovered subnets with member counts; click to
+  highlight a subnet on the map.
+- **Routing tab** — select source and destination device, trace the BFS path
+  across the shared-subnet graph, see every hop with IPs and the subnet traversed,
+  highlighted on the map.
+- **Detail panel** — click any device to open a sliding panel with:
+  - Live RX/TX throughput chart (D3, rAF render loop)
+  - Packets/s and errors/s views
+  - Full kernel routing table
+
+## Requirements
+
+- Node 22+
+- Angular CLI 21 (`npm install -g @angular/cli`)
+- A running neteye-center (default: `http://localhost:8080`)
+
+## Development
 
 ```bash
+npm install
 ng serve
 ```
 
-Once the server is running, open your browser and navigate to `http://localhost:4200/`. The application will automatically reload whenever you modify any of the source files.
+The Angular CLI development server starts on `http://localhost:4200`.
+`proxy.conf.json` is wired into `angular.json`, so `ng serve` automatically
+proxies:
 
-## Code scaffolding
+| Path | Forwarded to |
+|------|-------------|
+| `/api/*` | `http://localhost:8080/api/*` |
+| `/ws`    | `ws://localhost:8080/ws` (WebSocket upgrade) |
 
-Angular CLI includes powerful code scaffolding tools. To generate a new component, run:
+This means neteye-center must be running on port 8080 during development.
+No CORS configuration is needed.
 
-```bash
-ng generate component component-name
-```
-
-For a complete list of available schematics (such as `components`, `directives`, or `pipes`), run:
-
-```bash
-ng generate --help
-```
-
-## Building
-
-To build the project run:
+## Production build
 
 ```bash
-ng build
+ng build --configuration=production
 ```
 
-This will compile your project and store the build artifacts in the `dist/` directory. By default, the production build optimizes your application for performance and speed.
+Output goes to `dist/neteye-frontend/browser/`. The included `nginx.conf`
+proxies `/ws` and `/api/` to the center and handles SPA routing.
 
-## Running unit tests
-
-To execute unit tests with the [Vitest](https://vitest.dev/) test runner, use the following command:
+### Docker
 
 ```bash
-ng test
+docker build -t neteye-frontend .
+docker run -p 80:80 neteye-frontend
 ```
 
-## Running end-to-end tests
+The nginx container expects `neteye-center` to be resolvable on port 8080
+(as set up by `docker-compose.yml`).
 
-For end-to-end (e2e) testing, run:
+## Environment files
 
-```bash
-ng e2e
+| File | Used by |
+|------|---------|
+| `src/environments/environment.ts` | `ng serve` (dev) |
+| `src/environments/environment.prod.ts` | `ng build --configuration=production` |
+
+Both use `window.location.host` for the WebSocket URL, so the same build works
+behind any hostname/port — no rebuild needed to change the server address.
+
+## Project structure
+
+```
+src/app/
+├── core/
+│   ├── models/topology.models.ts       # Wire protocol types + graph helpers
+│   └── services/topology.service.ts   # WebSocket client, Angular Signals state
+├── features/
+│   ├── topology-map/                   # D3 force graph component
+│   ├── sidebar/                        # 3-tab sidebar (devices / networks / routing)
+│   └── metrics-chart/                  # Live D3 line chart + routes table
+├── app.ts                              # Root component (shell layout)
+├── app.html                            # Shell template
+└── app.config.ts                       # Angular providers (HttpClient, Router)
 ```
 
-Angular CLI does not come with an end-to-end testing framework by default. You can choose one that suits your needs.
+## Key design decisions
 
-## Additional Resources
-
-For more information on using the Angular CLI, including detailed command references, visit the [Angular CLI Overview and Command Reference](https://angular.dev/tools/cli) page.
+- **Angular Signals** for all reactive state — no RxJS Subjects needed. The
+  topology service exposes `devices`, `connected`, and derived `graphNodes` /
+  `graphLinks` as signals; components read them directly.
+- **D3 outside Angular change detection** — the force simulation and SVG
+  mutations run entirely in D3 event callbacks and `requestAnimationFrame`,
+  bypassing Angular's zone. This is intentional for performance with hundreds of
+  nodes.
+- **In-browser BFS** for route previewing (instant feedback) backed by the
+  authoritative `/api/route` endpoint on the server, which has the full routing
+  table from the kernel.

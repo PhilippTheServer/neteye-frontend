@@ -1,0 +1,132 @@
+:host {
+  display: block;
+  width: 100%;
+  height: 100%;
+}
+
+.map-wrap {
+  position: relative;
+  width: 100%;
+  height: 100%;
+  background: var(--bg);
+  background-image:
+    radial-gradient(circle at 20% 20%, rgba(0,212,170,.03) 0%, transparent 50%),
+    radial-gradient(circle at 80% 80%, rgba(0,151,255,.03) 0%, transparent 50%);
+  overflow: hidden;
+}
+
+.topo-svg {
+  width: 100%;
+  height: 100%;
+  cursor: grab;
+  &:active { cursor: grabbing; }
+}
+
+// ── Links ─────────────────────────────────────────────────────────────────────
+
+::ng-deep .link {
+  stroke-width: 2;
+  opacity: 0.55;
+  transition: opacity .2s, stroke-width .2s;
+  cursor: pointer;
+
+  &:hover { opacity: 1; stroke-width: 3; }
+  &.highlighted { opacity: 1; stroke-width: 4; }
+  &.dimmed { opacity: .08; }
+}
+
+::ng-deep .link-label {
+  font-size: 9px;
+  font-family: var(--mono);
+  paint-order: stroke;
+  stroke: var(--bg);
+  stroke-width: 3px;
+  pointer-events: none;
+  opacity: 0.7;
+}
+
+// ── Nodes ─────────────────────────────────────────────────────────────────────
+
+::ng-deep .node {
+  cursor: pointer;
+  transition: opacity .2s;
+
+  &.dimmed { opacity: .15; }
+
+  .node-bg {
+    fill: var(--bg3);
+    stroke-width: 1.5;
+    transition: stroke-width .15s, filter .15s;
+
+    &:hover { stroke-width: 2.5; filter: drop-shadow(0 0 6px currentColor); }
+  }
+
+  &:hover .node-bg { filter: drop-shadow(0 0 6px currentColor); }
+
+  .node-name {
+    font-size: 11px;
+    font-family: var(--mono);
+    font-weight: 500;
+    fill: var(--text);
+    text-anchor: middle;
+    pointer-events: none;
+  }
+
+  .node-type {
+    font-size: 9px;
+    font-family: var(--mono);
+    fill: var(--text2);
+    text-anchor: middle;
+    pointer-events: none;
+  }
+
+  .status-dot {
+    transition: fill .3s;
+  }
+
+  .iface-bars rect {
+    pointer-events: none;
+  }
+}
+
+// ── Controls ──────────────────────────────────────────────────────────────────
+
+.zoom-controls {
+  position: absolute;
+  bottom: 16px;
+  right: 16px;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+
+  button {
+    width: 32px;
+    height: 32px;
+    background: var(--bg2);
+    border: 1px solid var(--border2);
+    border-radius: 4px;
+    color: var(--text);
+    font-size: 16px;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: all .15s;
+
+    &:hover {
+      background: var(--bg3);
+      color: var(--accent);
+      border-color: var(--accent);
+    }
+  }
+}
+
+.hint {
+  position: absolute;
+  bottom: 16px;
+  left: 16px;
+  font-size: 10px;
+  color: var(--text2);
+  font-family: var(--mono);
+  pointer-events: none;
+}
