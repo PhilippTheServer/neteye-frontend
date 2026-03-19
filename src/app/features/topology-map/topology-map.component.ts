@@ -62,6 +62,9 @@ export class TopologyMapComponent implements AfterViewInit, OnDestroy {
   private colorMap = new Map<string, string>();
   private colorIdx = 0;
 
+  private nodeIds = new Set<string>();
+  private linkKeys = new Set<string>();
+
   private resizeObserver!: ResizeObserver;
   private effectRef: ReturnType<typeof effect>;
 
@@ -138,10 +141,40 @@ export class TopologyMapComponent implements AfterViewInit, OnDestroy {
   private updateGraph(nodes: GraphNode[], links: GraphLink[]): void {
     if (!this.g) return;
 
-    // Assign colours to new CIDRs
+    // Detect structural changes (nodes or links added/removed)
+    const newNodeIds = new Set(nodes.map((n) => n.id));
+    const pairKey = (l: GraphLink): string => {
+      const s = typeof l.source === 'string' ? l.source : (l.source as GraphNode).id;
+      const t = typeof l.target === 'string' ? l.target : (l.target as GraphNode).id;
+      return [s, t].sort().join('|');
+    };
+    const newLinkKeys = new Set(links.map(pairKey));
+    const structural =
+      newNodeIds.size !== this.nodeIds.size ||
+      [...newNodeIds].some((id) => !this.nodeIds.has(id)) ||
+      newLinkKeys.size !== this.linkKeys.size ||
+      [...newLinkKeys].some((k) => !this.linkKeys.has(k));
+    this.nodeIds = newNodeIds;
+    this.linkKeys = newLinkKeys;
+
+    // Assign colours to CIDRs from links
     for (const l of links) {
-      if (!this.colorMap.has(l.cidr)) {
-        this.colorMap.set(l.cidr, NET_COLORS[this.colorIdx++ % NET_COLORS.length]);
+      for (const cidr of l.cidrs) {
+        if (!this.colorMap.has(cidr)) {
+          this.colorMap.set(cidr, NET_COLORS[this.colorIdx++ % NET_COLORS.length]);
+        }
+      }
+    }
+    // Also assign colours from node addresses (needed when there are no links yet)
+    for (const n of nodes) {
+      for (const iface of n.interfaces) {
+        for (const addr of iface.addresses) {
+          if (addr.family !== 'ipv4') continue;
+          const net = cidrNetworkFromAddress(addr.address);
+          if (net && !this.colorMap.has(net)) {
+            this.colorMap.set(net, NET_COLORS[this.colorIdx++ % NET_COLORS.length]);
+          }
+        }
       }
     }
 
@@ -149,11 +182,7 @@ export class TopologyMapComponent implements AfterViewInit, OnDestroy {
     this.linkSel = this.g
       .select<SVGGElement>('.links')
       .selectAll<SVGLineElement, GraphLink>('line')
-      .data(links, (d: GraphLink) => {
-        const s = typeof d.source === 'string' ? d.source : d.source.id;
-        const t = typeof d.target === 'string' ? d.target : d.target.id;
-        return `${s}|${t}|${d.cidr}`;
-      });
+      .data(links, (d: GraphLink) => pairKey(d));
 
     this.linkSel.exit().remove();
 
@@ -175,11 +204,7 @@ export class TopologyMapComponent implements AfterViewInit, OnDestroy {
     this.labelSel = this.g
       .select<SVGGElement>('.link-labels')
       .selectAll<SVGTextElement, GraphLink>('text')
-      .data(links, (d: GraphLink) => {
-        const s = typeof d.source === 'string' ? d.source : (d.source as GraphNode).id;
-        const t = typeof d.target === 'string' ? d.target : (d.target as GraphNode).id;
-        return `${s}|${t}|${d.cidr}`;
-      });
+      .data(links, (d: GraphLink) => pairKey(d));
 
     this.labelSel.exit().remove();
 
@@ -285,10 +310,12 @@ export class TopologyMapComponent implements AfterViewInit, OnDestroy {
         });
       });
 
-    // Restart simulation with updated data
+    // Restart simulation — only re-heat on structural changes to preserve positions
     this.sim.nodes(nodes);
     (this.sim.force('link') as d3.ForceLink<GraphNode, GraphLink>).links(links);
-    this.sim.alpha(0.3).restart();
+    if (structural) {
+      this.sim.alpha(0.3).restart();
+    }
   }
 
   // ── Simulation tick ────────────────────────────────────────────────────────

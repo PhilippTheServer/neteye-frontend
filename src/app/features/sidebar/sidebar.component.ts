@@ -1,7 +1,12 @@
 import { Component, Input, Output, EventEmitter, signal, computed } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
-import { DeviceInfo, RouteAnalysis, RouteHop } from '../../core/models/topology.models';
+import {
+  DeviceInfo,
+  InterfaceInfo,
+  RouteAnalysis,
+  RouteHop,
+} from '../../core/models/topology.models';
 import { TopologyService } from '../../core/services/topology.service';
 import { TopologyMapComponent } from '../topology-map/topology-map.component';
 
@@ -116,6 +121,15 @@ export class SidebarComponent {
     if (n >= 1e6) return (n / 1e6).toFixed(1) + ' MB/s';
     if (n >= 1e3) return (n / 1e3).toFixed(1) + ' KB/s';
     return n.toFixed(0) + ' B/s';
+  }
+
+  primaryIface(d: DeviceInfo): InterfaceInfo | null {
+    return (
+      d.interfaces.find((i) => i.name === 'eth0') ??
+      d.interfaces.find((i) => i.addresses.some((a) => a.family === 'ipv4')) ??
+      d.interfaces[0] ??
+      null
+    );
   }
 
   interfaceAddresses(d: DeviceInfo): string {

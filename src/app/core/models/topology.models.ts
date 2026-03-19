@@ -95,9 +95,11 @@ export interface GraphNode extends DeviceInfo {
 export interface GraphLink {
   source: GraphNode | string;
   target: GraphNode | string;
-  /** Shared CIDR prefix (e.g. "192.168.1.0/24") */
+  /** Primary CIDR (used for coloring) */
   cidr: string;
-  /** Human-readable network label derived from the CIDR */
+  /** All shared CIDRs between this device pair */
+  cidrs: string[];
+  /** Human-readable label (all CIDRs joined) */
   label: string;
   isVpn: boolean; // rendered as dashed line
 }
@@ -145,15 +147,15 @@ export function cidrNetwork(address: string): string | null {
   return `${net.join('.')}/${prefix}`;
 }
 
-/** Build GraphLinks from a device list — devices sharing a subnet get an edge. */
+/** Build GraphLinks from a device list — one edge per device pair, listing all shared CIDRs. */
 export function buildLinks(devices: DeviceInfo[]): GraphLink[] {
   // cidr → [{device, ip}]
   const netMap = new Map<string, { device: DeviceInfo; ip: string }[]>();
 
   for (const d of devices) {
     for (const iface of d.interfaces) {
-      for (const addr of iface.addresses) {
-        if (addr.family === 'ipv6') continue; // topology uses IPv4 for simplicity
+      for (const addr of iface.addresses ?? []) {
+        if (addr.family === 'ipv6') continue;
         const net = cidrNetwork(addr.address);
         if (!net) continue;
         const ip = addr.address.split('/')[0];
@@ -163,28 +165,33 @@ export function buildLinks(devices: DeviceInfo[]): GraphLink[] {
     }
   }
 
-  const linkMap = new Map<string, GraphLink>();
+  // pairKey → { srcId, dstId, cidrs[] } — one entry per device pair
+  const pairMap = new Map<string, { srcId: string; dstId: string; cidrs: string[] }>();
+
   for (const [cidr, members] of netMap) {
     for (let i = 0; i < members.length; i++) {
       for (let j = i + 1; j < members.length; j++) {
         const a = members[i],
           b = members[j];
         if (a.device.id === b.device.id) continue;
-        // De-duplicate: use sorted id pair as key (one link per subnet per pair)
-        const key = [a.device.id, b.device.id].sort().join('|') + '|' + cidr;
-        if (!linkMap.has(key)) {
-          linkMap.set(key, {
-            source: a.device.id,
-            target: b.device.id,
-            cidr,
-            label: cidr,
-            isVpn: isVpnCidr(cidr),
-          });
+        const pairKey = [a.device.id, b.device.id].sort().join('|');
+        if (!pairMap.has(pairKey)) {
+          pairMap.set(pairKey, { srcId: a.device.id, dstId: b.device.id, cidrs: [] });
         }
+        const entry = pairMap.get(pairKey)!;
+        if (!entry.cidrs.includes(cidr)) entry.cidrs.push(cidr);
       }
     }
   }
-  return [...linkMap.values()];
+
+  return [...pairMap.values()].map(({ srcId, dstId, cidrs }) => ({
+    source: srcId,
+    target: dstId,
+    cidr: cidrs[0],
+    cidrs,
+    label: cidrs.join(' · '),
+    isVpn: cidrs.every(isVpnCidr),
+  }));
 }
 
 function isVpnCidr(cidr: string): boolean {

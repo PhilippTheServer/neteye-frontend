@@ -25,34 +25,30 @@
             <span class="device-name">{{ d.hostname }}</span>
             <span class="device-meta">{{ d.os }}/{{ d.arch }}</span>
           </div>
-          <div class="iface-list">
-            @for (iface of d.interfaces; track iface.name) {
+          @let iface = primaryIface(d);
+          @if (iface) {
+            <div class="iface-list">
               <div class="iface-row">
                 <div class="iface-bars">
                   @for (addr of iface.addresses; track addr.address) {
                     <span
                       class="iface-dot"
                       [style.background]="networkColor(addr.address.split('/')[0])"
-                    >
-                    </span>
+                    ></span>
                   }
                 </div>
                 <span class="iface-name">{{ iface.name }}</span>
                 <span class="iface-addrs">
                   @for (addr of iface.addresses; track addr.address) {
-                    <span
-                      class="addr-badge"
-                      [style.border-color]="'transparent'"
-                      [style.color]="'var(--text2)'"
-                    >
+                    <span class="addr-badge" [style.color]="'var(--text2)'">
                       {{ addr.address }}
                     </span>
                   }
                 </span>
                 <span class="iface-state" [class.up]="iface.state === 'up'">{{ iface.state }}</span>
               </div>
-            }
-          </div>
+            </div>
+          }
         </div>
       }
     </div>
