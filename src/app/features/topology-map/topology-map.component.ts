@@ -28,6 +28,9 @@ const NET_COLORS = [
   '#b5ead7',
 ];
 
+// Gap between parallel edges sharing the same device pair
+const PARALLEL_SPACING = 20;
+
 @Component({
   selector: 'app-topology-map',
   standalone: true,
@@ -55,7 +58,8 @@ export class TopologyMapComponent implements AfterViewInit, OnDestroy {
   private zoom!: d3.ZoomBehavior<SVGSVGElement, unknown>;
   private sim!: d3.Simulation<GraphNode, GraphLink>;
 
-  private linkSel!: d3.Selection<SVGLineElement, GraphLink, SVGGElement, unknown>;
+  // Links are now <path> elements (quadratic bezier curves)
+  private linkSel!: d3.Selection<SVGPathElement, GraphLink, SVGGElement, unknown>;
   private labelSel!: d3.Selection<SVGTextElement, GraphLink, SVGGElement, unknown>;
   private nodeSel!: d3.Selection<SVGGElement, GraphNode, SVGGElement, unknown>;
 
@@ -65,11 +69,13 @@ export class TopologyMapComponent implements AfterViewInit, OnDestroy {
   private nodeIds = new Set<string>();
   private linkKeys = new Set<string>();
 
+  // Per-edge perpendicular offset (px) for parallel-edge separation
+  private parallelOffsets = new Map<string, number>();
+
   private resizeObserver!: ResizeObserver;
   private effectRef: ReturnType<typeof effect>;
 
   constructor(private topo: TopologyService) {
-    // Re-render whenever signals change
     this.effectRef = effect(() => {
       const nodes = this.topo.graphNodes();
       const links = this.topo.graphLinks();
@@ -124,12 +130,12 @@ export class TopologyMapComponent implements AfterViewInit, OnDestroy {
         d3
           .forceLink<GraphNode, GraphLink>()
           .id((d) => d.id)
-          .distance(160)
-          .strength(0.25),
+          .distance(180)
+          .strength(0.3),
       )
       .force('charge', d3.forceManyBody().strength(-600))
       .force('center', d3.forceCenter(W / 2, H / 2))
-      .force('collision', d3.forceCollide(55))
+      .force('collision', d3.forceCollide(60))
       .on('tick', () => this.tick());
 
     // Initial render
@@ -141,14 +147,15 @@ export class TopologyMapComponent implements AfterViewInit, OnDestroy {
   private updateGraph(nodes: GraphNode[], links: GraphLink[]): void {
     if (!this.g) return;
 
-    // Detect structural changes (nodes or links added/removed)
-    const newNodeIds = new Set(nodes.map((n) => n.id));
-    const pairKey = (l: GraphLink): string => {
+    // Edge key includes CIDR — each CIDR is its own edge
+    const edgeKey = (l: GraphLink): string => {
       const s = typeof l.source === 'string' ? l.source : (l.source as GraphNode).id;
       const t = typeof l.target === 'string' ? l.target : (l.target as GraphNode).id;
-      return [s, t].sort().join('|');
+      return [...[s, t].sort(), l.cidr].join('|');
     };
-    const newLinkKeys = new Set(links.map(pairKey));
+
+    const newNodeIds = new Set(nodes.map((n) => n.id));
+    const newLinkKeys = new Set(links.map(edgeKey));
     const structural =
       newNodeIds.size !== this.nodeIds.size ||
       [...newNodeIds].some((id) => !this.nodeIds.has(id)) ||
@@ -157,15 +164,29 @@ export class TopologyMapComponent implements AfterViewInit, OnDestroy {
     this.nodeIds = newNodeIds;
     this.linkKeys = newLinkKeys;
 
-    // Assign colours to CIDRs from links
-    for (const l of links) {
-      for (const cidr of l.cidrs) {
-        if (!this.colorMap.has(cidr)) {
-          this.colorMap.set(cidr, NET_COLORS[this.colorIdx++ % NET_COLORS.length]);
+    // Assign deterministic initial positions to new nodes:
+    // sort by hostname and place in a circle so the layout is stable across reloads.
+    if (structural && nodes.length > 0) {
+      const wrap = this.wrapRef.nativeElement;
+      const cx = wrap.clientWidth / 2,
+        cy = wrap.clientHeight / 2;
+      const r = Math.min(wrap.clientWidth, wrap.clientHeight) * 0.32;
+      const sorted = [...nodes].sort((a, b) => a.hostname.localeCompare(b.hostname));
+      sorted.forEach((n, i) => {
+        if (n.x === undefined) {
+          const angle = (2 * Math.PI * i) / sorted.length - Math.PI / 2;
+          n.x = cx + r * Math.cos(angle);
+          n.y = cy + r * Math.sin(angle);
         }
+      });
+    }
+
+    // Assign colours to CIDRs
+    for (const l of links) {
+      if (!this.colorMap.has(l.cidr)) {
+        this.colorMap.set(l.cidr, NET_COLORS[this.colorIdx++ % NET_COLORS.length]);
       }
     }
-    // Also assign colours from node addresses (needed when there are no links yet)
     for (const n of nodes) {
       for (const iface of n.interfaces) {
         for (const addr of iface.addresses) {
@@ -178,18 +199,22 @@ export class TopologyMapComponent implements AfterViewInit, OnDestroy {
       }
     }
 
-    // ── Links ─────────────────────────────────────────────────────────────
+    // Compute perpendicular offsets for parallel edges (same device pair, different CIDR)
+    this.parallelOffsets = computeParallelOffsets(links);
+
+    // ── Links (quadratic bezier paths) ────────────────────────────────────
     this.linkSel = this.g
       .select<SVGGElement>('.links')
-      .selectAll<SVGLineElement, GraphLink>('line')
-      .data(links, (d: GraphLink) => pairKey(d));
+      .selectAll<SVGPathElement, GraphLink>('path')
+      .data(links, edgeKey);
 
     this.linkSel.exit().remove();
 
     const linkEnter = this.linkSel
       .enter()
-      .append('line')
+      .append('path')
       .attr('class', 'link')
+      .attr('fill', 'none')
       .attr('stroke-dasharray', (d: GraphLink) => (d.isVpn ? '6 3' : null))
       .on('click', (e: MouseEvent, d: GraphLink) => {
         e.stopPropagation();
@@ -204,7 +229,7 @@ export class TopologyMapComponent implements AfterViewInit, OnDestroy {
     this.labelSel = this.g
       .select<SVGGElement>('.link-labels')
       .selectAll<SVGTextElement, GraphLink>('text')
-      .data(links, (d: GraphLink) => pairKey(d));
+      .data(links, edgeKey);
 
     this.labelSel.exit().remove();
 
@@ -212,6 +237,8 @@ export class TopologyMapComponent implements AfterViewInit, OnDestroy {
       .enter()
       .append('text')
       .attr('class', 'link-label')
+      .attr('text-anchor', 'middle')
+      .attr('dominant-baseline', 'middle')
       .merge(this.labelSel)
       .text((d: GraphLink) => d.label)
       .attr('fill', (d: GraphLink) => this.colorMap.get(d.cidr) ?? '#888');
@@ -288,7 +315,7 @@ export class TopologyMapComponent implements AfterViewInit, OnDestroy {
       .select('.status-dot')
       .attr('fill', (d: GraphNode) => (d.status === 'online' ? '#00d4aa' : '#ff4757'));
 
-    // Rebuild iface bars — capture colorMap via arrow function closure
+    // Rebuild iface bars
     const colorMap = this.colorMap;
     this.nodeSel
       .select<SVGGElement>('.iface-bars')
@@ -323,15 +350,19 @@ export class TopologyMapComponent implements AfterViewInit, OnDestroy {
   private tick(): void {
     if (!this.linkSel || !this.labelSel || !this.nodeSel) return;
 
-    this.linkSel
-      .attr('x1', (d: GraphLink) => (d.source as GraphNode).x ?? 0)
-      .attr('y1', (d: GraphLink) => (d.source as GraphNode).y ?? 0)
-      .attr('x2', (d: GraphLink) => (d.target as GraphNode).x ?? 0)
-      .attr('y2', (d: GraphLink) => (d.target as GraphNode).y ?? 0);
+    const offsets = this.parallelOffsets;
 
-    this.labelSel
-      .attr('x', (d: GraphLink) => ((d.source as GraphNode).x! + (d.target as GraphNode).x!) / 2)
-      .attr('y', (d: GraphLink) => ((d.source as GraphNode).y! + (d.target as GraphNode).y!) / 2);
+    const resolvedKey = (d: GraphLink): string => {
+      const s = (d.source as GraphNode).id;
+      const t = (d.target as GraphNode).id;
+      return [...[s, t].sort(), d.cidr].join('|');
+    };
+
+    this.linkSel.attr('d', (d: GraphLink) => linkPath(d, offsets.get(resolvedKey(d)) ?? 0));
+
+    this.labelSel.attr('transform', (d: GraphLink) =>
+      labelTransform(d, offsets.get(resolvedKey(d)) ?? 0),
+    );
 
     this.nodeSel.attr('transform', (d: GraphNode) => `translate(${d.x ?? 0},${d.y ?? 0})`);
   }
@@ -452,6 +483,90 @@ export class TopologyMapComponent implements AfterViewInit, OnDestroy {
 }
 
 // ── Module-level helpers ───────────────────────────────────────────────────────
+
+/**
+ * For each edge, compute its perpendicular offset (px) so that parallel edges
+ * (same device pair, different CIDR) fan out and never overlap.
+ */
+function computeParallelOffsets(links: GraphLink[]): Map<string, number> {
+  // Group edge-keys by their device pair (without CIDR)
+  const groups = new Map<string, string[]>(); // pairKey → edgeKey[]
+  for (const l of links) {
+    const s = typeof l.source === 'string' ? l.source : (l.source as GraphNode).id;
+    const t = typeof l.target === 'string' ? l.target : (l.target as GraphNode).id;
+    const pairKey = [s, t].sort().join('|');
+    const eKey = [...[s, t].sort(), l.cidr].join('|');
+    if (!groups.has(pairKey)) groups.set(pairKey, []);
+    groups.get(pairKey)!.push(eKey);
+  }
+
+  const result = new Map<string, number>();
+  for (const edgeKeys of groups.values()) {
+    const count = edgeKeys.length;
+    edgeKeys.forEach((k, i) => {
+      // Centre the fan: offsets are symmetric around 0
+      result.set(k, (i - (count - 1) / 2) * PARALLEL_SPACING);
+    });
+  }
+  return result;
+}
+
+/**
+ * SVG quadratic bezier path for a link.
+ * `offset` moves the control point perpendicularly — 0 = straight line.
+ */
+function linkPath(d: GraphLink, offset: number): string {
+  const sx = (d.source as GraphNode).x ?? 0;
+  const sy = (d.source as GraphNode).y ?? 0;
+  const tx = (d.target as GraphNode).x ?? 0;
+  const ty = (d.target as GraphNode).y ?? 0;
+
+  const dx = tx - sx,
+    dy = ty - sy;
+  const len = Math.sqrt(dx * dx + dy * dy) || 1;
+  // Perpendicular unit vector (rotated 90° ccw)
+  const nx = -dy / len,
+    ny = dx / len;
+
+  const cpx = (sx + tx) / 2 + nx * offset;
+  const cpy = (sy + ty) / 2 + ny * offset;
+
+  return `M ${sx} ${sy} Q ${cpx} ${cpy} ${tx} ${ty}`;
+}
+
+/**
+ * SVG transform that positions a label centred on the edge and rotated to align with it.
+ * The label is shifted slightly in the normal direction so it clears the stroke.
+ */
+function labelTransform(d: GraphLink, offset: number): string {
+  const sx = (d.source as GraphNode).x ?? 0;
+  const sy = (d.source as GraphNode).y ?? 0;
+  const tx = (d.target as GraphNode).x ?? 0;
+  const ty = (d.target as GraphNode).y ?? 0;
+
+  const dx = tx - sx,
+    dy = ty - sy;
+  const len = Math.sqrt(dx * dx + dy * dy) || 1;
+  const nx = -dy / len,
+    ny = dx / len;
+
+  const cpx = (sx + tx) / 2 + nx * offset;
+  const cpy = (sy + ty) / 2 + ny * offset;
+
+  // Midpoint of quadratic bezier at t = 0.5
+  const midX = 0.25 * sx + 0.5 * cpx + 0.25 * tx;
+  const midY = 0.25 * sy + 0.5 * cpy + 0.25 * ty;
+
+  // Keep text readable: flip angle if it would render upside-down
+  let angle = Math.atan2(dy, dx) * (180 / Math.PI);
+  if (angle > 90 || angle < -90) angle += 180;
+
+  // Shift label 9 px in the normal direction so it sits just above the line
+  const shiftX = midX + nx * 9;
+  const shiftY = midY + ny * 9;
+
+  return `translate(${shiftX},${shiftY}) rotate(${angle})`;
+}
 
 function uniqueCidrs(d: GraphNode): string[] {
   const seen = new Set<string>();

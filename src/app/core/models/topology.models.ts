@@ -147,7 +147,7 @@ export function cidrNetwork(address: string): string | null {
   return `${net.join('.')}/${prefix}`;
 }
 
-/** Build GraphLinks from a device list — one edge per device pair, listing all shared CIDRs. */
+/** Build GraphLinks from a device list — one edge per CIDR (route) between each device pair. */
 export function buildLinks(devices: DeviceInfo[]): GraphLink[] {
   // cidr → [{device, ip}]
   const netMap = new Map<string, { device: DeviceInfo; ip: string }[]>();
@@ -165,33 +165,31 @@ export function buildLinks(devices: DeviceInfo[]): GraphLink[] {
     }
   }
 
-  // pairKey → { srcId, dstId, cidrs[] } — one entry per device pair
-  const pairMap = new Map<string, { srcId: string; dstId: string; cidrs: string[] }>();
+  const links: GraphLink[] = [];
+  const seen = new Set<string>();
 
   for (const [cidr, members] of netMap) {
     for (let i = 0; i < members.length; i++) {
       for (let j = i + 1; j < members.length; j++) {
-        const a = members[i],
-          b = members[j];
+        const a = members[i], b = members[j];
         if (a.device.id === b.device.id) continue;
-        const pairKey = [a.device.id, b.device.id].sort().join('|');
-        if (!pairMap.has(pairKey)) {
-          pairMap.set(pairKey, { srcId: a.device.id, dstId: b.device.id, cidrs: [] });
-        }
-        const entry = pairMap.get(pairKey)!;
-        if (!entry.cidrs.includes(cidr)) entry.cidrs.push(cidr);
+        // One edge per CIDR — sorted pair + cidr as unique key
+        const edgeKey = [...[a.device.id, b.device.id].sort(), cidr].join('|');
+        if (seen.has(edgeKey)) continue;
+        seen.add(edgeKey);
+        links.push({
+          source: a.device.id,
+          target: b.device.id,
+          cidr,
+          cidrs: [cidr],
+          label: cidr,
+          isVpn: isVpnCidr(cidr),
+        });
       }
     }
   }
 
-  return [...pairMap.values()].map(({ srcId, dstId, cidrs }) => ({
-    source: srcId,
-    target: dstId,
-    cidr: cidrs[0],
-    cidrs,
-    label: cidrs.join(' · '),
-    isVpn: cidrs.every(isVpnCidr),
-  }));
+  return links;
 }
 
 function isVpnCidr(cidr: string): boolean {
