@@ -154,10 +154,12 @@ export function buildLinks(devices: DeviceInfo[]): GraphLink[] {
 
   for (const d of devices) {
     for (const iface of d.interfaces) {
+      // Skip virtual/internal interfaces — they don't represent real host-to-host links
+      if (isVirtualIface(iface.name)) continue;
       for (const addr of iface.addresses ?? []) {
         if (addr.family === 'ipv6') continue;
         const net = cidrNetwork(addr.address);
-        if (!net) continue;
+        if (!net || isUnroutableNet(net)) continue;
         const ip = addr.address.split('/')[0];
         if (!netMap.has(net)) netMap.set(net, []);
         netMap.get(net)!.push({ device: d, ip });
@@ -196,4 +198,39 @@ function isVpnCidr(cidr: string): boolean {
   // Heuristic: /30 or /31 point-to-point, or 10.x with typical VPN prefixes
   const prefix = parseInt(cidr.split('/')[1], 10);
   return prefix >= 30;
+}
+
+/**
+ * Returns true for interfaces that only exist within a single host and cannot
+ * represent a real L3 link to another physical device:
+ *   lo           — loopback
+ *   docker0      — Docker default bridge
+ *   br-<hex>     — Docker named-network bridges
+ *   veth<...>    — Docker veth pairs (container side)
+ *   virbr<...>   — libvirt NAT bridges
+ *   dummy<...>   — Linux dummy interfaces
+ *   vxlan<...>   — VXLAN overlay interfaces
+ */
+function isVirtualIface(name: string): boolean {
+  return (
+    name === 'lo' ||
+    /^docker\d*$/.test(name) ||
+    /^br-[a-f0-9]+$/.test(name) ||
+    /^veth/.test(name) ||
+    /^virbr/.test(name) ||
+    /^dummy/.test(name) ||
+    /^vxlan/.test(name)
+  );
+}
+
+/**
+ * Returns true for network addresses that cannot represent a routed link
+ * between two distinct physical hosts.
+ */
+function isUnroutableNet(net: string): boolean {
+  return (
+    net.startsWith('0.0.0.0') || // default / unspecified
+    net.startsWith('127.') || // loopback subnet
+    net.startsWith('169.254.') // link-local (APIPA)
+  );
 }
